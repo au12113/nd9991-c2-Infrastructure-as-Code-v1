@@ -1,46 +1,12 @@
+AWSTemplateFormatVersion: "2010-09-09"
 Parameters:
   EnvironmentName:
+    Description: An environment name that will be prefixed to resource
     Type: String
-    Description: EC2 Server environment name
-    
-  InstanceImageId:
+  myLaunchTemplateVersionNumber:
     Type: String
-    Description: An Image ID for EC2 Instance
-
-  InstanceType:
-    Type: String
-    Description: A type of EC2 Instance
-
+    Default: 1
 Resources:
-  UdacityS3ReadOnlyEC2:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ec2.amazonaws.com
-            Action: sts:AssumeRole
-      Path: /
-      Policies:
-        - PolicyName: S3ReadOnlyEC2
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:Get*
-                  - s3:List*
-                Resource: "*"
-
-  ProfileWithRolesForOurApp:
-    Type: AWS::IAM::InstanceProfile
-    Properties: 
-      Path: /
-      Roles:
-        - !Ref UdacityS3ReadOnlyEC2
-
   LBSecGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -58,11 +24,11 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
-  
+
   WebServerSecGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Web server security group
+      GroupDescription: Allow http to our load balancer
       VpcId:
         Fn::ImportValue:
           !Sub ${EnvironmentName}-VPCID
@@ -81,41 +47,41 @@ Resources:
         ToPort: 65535
         CidrIp: 0.0.0.0/0
 
-  WebAppLaunchConfig:
-    Type: AWS::AutoScaling::LaunchConfiguration
+  WebAppLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
     Properties:
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          apt-get update -y
-          apt-get install apache2 -y
-          systemctl start apache2.service
-          cd /var/www/html
-          aws s3 cp s3://udacity-demo-1/udacity.zip .
-          unzip -o udacity.zip
-      ImageId: !Ref InstanceImageId
-      KeyName: VocareumKey2
-      IamInstanceProfile: !Ref ProfileWithRolesForOurApp
-      SecurityGroups:
-      - !Ref WebServerSecGroup
-      InstanceType: !Ref InstanceType
-      BlockDeviceMappings:
-      - DeviceName: "/dev/sdk"
-        Ebs:
-          VolumeSize: '10'
+      LaunchTemplateData:
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            apt-get update -y
+            apt-get install apache2 -y
+            systemctl start apache2.service
+            cd /var/www/html
+            echo "Udacity Demo Web Server Up and Running!" > index.html
+        ImageId: ami-0cf6f5c8a62fa5da6
+        KeyName: VocareumKey2
+        SecurityGroupIds: 
+        - !GetAtt WebServerSecGroup.GroupId
+        InstanceType: t3.small
+        BlockDeviceMappings:
+        - DeviceName: "/dev/sdk"
+          Ebs:
+            VolumeSize: 10
 
   WebAppGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier:
-      - Fn::ImportValue: 
-          !Sub "${EnvironmentName}-PRIV-NETS"
-      LaunchConfigurationName:
-        Ref: WebAppLaunchConfig
+        - Fn::ImportValue: 
+            !Sub ${EnvironmentName}-PRIV-NETS
+      LaunchTemplate:
+        LaunchTemplateId: !Ref WebAppLaunchTemplate
+        Version: !Ref myLaunchTemplateVersionNumber
       MinSize: '3'
       MaxSize: '5'
-      TargetGroupARNs:
-      - Ref: WebAppTargetGroup
+      HealthCheckGracePeriod: 60
+      HealthCheckType: ELB
 
   WebAppLB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
@@ -145,7 +111,7 @@ Resources:
       Conditions:
       - Field: path-pattern
         Values: [/]
-      ListenerArn: !Ref Listener
+      ListenerArn:  !Ref Listener
       Priority: 1
   
   WebAppTargetGroup:
@@ -160,13 +126,4 @@ Resources:
       Protocol: HTTP
       UnhealthyThresholdCount: 5
       VpcId:
-        Fn::ImportValue: 
-          !Sub ${EnvironmentName}-VPCID
-
-Outputs: 
-  LBDNSName:
-    Description: LoadBalancer DNS for public access
-    Value: 
-      Fn::GetAtt: WebAppLB.DNSName
-    Export:
-      Name: !Sub ${EnvironmentName}-DNS
+        Fn::ImportValue: !Sub ${EnvironmentName}-VPCID

@@ -1,0 +1,33 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  EnvironmentDBName:
+    Type: String
+    Default: UdacityProjectDB
+  EnvironmentName:
+    Type: String
+    Default: UdacityProject
+Resources:
+  myDBSubnetGroup1:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnets of database for ourservers
+      DBSubnetGroupName: !Sub ${EnvironmentDBName}-subnet-group
+      SubnetIds:
+      - subnet-0f05ffccbaed64062
+      - subnet-0764ca7c75b3a457e
+      Tags:
+      - Key: Name
+        Value: !Sub ${EnvironmentDBName}-Subnet-group
+
+  MyDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: 20
+      DBInstanceClass: db.m5.large
+      DBInstanceIdentifier: database-1
+      DBSubnetGroupName: !Ref myDBSubnetGroup1
+      Engine: mysql
+      EngineVersion: 8.0.20
+      MasterUsername: admin
+      MasterUserPassword: W45up0nt
+    DeletionPolicy: "Retain"

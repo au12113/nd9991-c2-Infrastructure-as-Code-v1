@@ -1,0 +1,16 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Carlos Rivas / Udacity - This template deploys a VPC
+Parameters:
+  MyVariable:
+    Type: String
+    Default: test in template
+Resources:
+  UdacityVPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: 'true'
+      Tags:
+      - Key: name
+        Value: 
+          Ref: MyVariable

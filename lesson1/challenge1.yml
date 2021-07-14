@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  InstanceTypeParameter:
+    Type: String
+    Description: 'EC2 Instance Type'
+    Default: t3.micro
+  SecurityGroupVpc:
+    Type: String
+    Description: 'VPC ID for Security Group'
+    Default: vpc-115f7569
+  AMItoUse:
+    Type: String
+    Description: 'AMI ID For EC2 Instance'
+    Default: ami-0cf6f5c8a62fa5da6
+Resources:
+  myWebAccessSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow inbound only 80
+      SecurityGroupIngress:
+        IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      VpcId:
+        Ref: SecurityGroupVpc
+  myWebServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId:
+        Ref: AMItoUse
+      InstanceType:
+        Ref: InstanceTypeParameter
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          SubnetId: subnet-856fcecf
+          DeviceIndex: 0
+          GroupSet:
+            - Ref: myWebAccessSecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          sudo yum update -y
+          sudo yum install -y httpd
+          sudo systemctl start httpd
+          sudo systemctl enable httpd
+

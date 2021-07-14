@@ -1,0 +1,86 @@
+Parameters:
+  EnvironmentName:
+    Description: An environment name that will prefixed to resource names
+    Type: String
+
+  VpcCIDR:
+    Description: Please enter IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 10.0.0.0/16
+
+  VpnType:
+    Description: a type of VPN that used on entire VPN system
+    Type: String
+    Default: ipsec.1
+
+  CustomerGatewayBgpAsn:
+    Description: For devices that support BGP, the customer gateway's BGP ASN
+    Type: Integer
+    Default: 65000
+
+  CustomerGatewayIp:
+    Description: The static address for customer gateway's outside interface
+    Type: String
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsHostnames: false
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  VPNGateway:
+    Type: AWS::EC2::VPNGateway
+    Properties:
+      Type: !Ref VpnType
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  VPNGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref VPNGateway
+      VpcId: !Ref VPC
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      MapPulicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet (AZ1)
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet (AZ2)
+
+  CustomerGateway:
+    Type: AWS::EC2::CustomerGateway
+    Properties:
+      BgpAsn: !Ref CustomerGatewayBgpAsn
+      IpAddress: !Ref CustomerGatewayIp
+      Type: !Ref VpnType
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Customer Gateway
+
+  ClientVpnEndpoint1:
+    Type: AWS::EC2::ClientVpnEndpoint
+    Properties:
+      AuthenticationOptions:
+      ClientCidrBlock:
+      

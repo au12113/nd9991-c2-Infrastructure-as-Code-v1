@@ -1,0 +1,25 @@
+Resources:
+  Ec2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+      KeyName: VocareumKey2
+      ImageId: 'ami-0dc8f589abe99f538'
+  InstanceSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH access via port 22
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+
+Outputs: 
+  PublicIp:
+    Description: EC2-instance's Public IP
+    Value: 
+      Fn::GetAtt: Ec2Instance.PublicIp
+    Export:
+      Name: Udacity-PublicIp

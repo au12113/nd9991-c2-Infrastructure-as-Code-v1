@@ -1,0 +1,10 @@
+[
+    {
+        "ParameterKey": "EnvironmentDBName",
+        "ParameterValue": "UdacityProjectDB"
+    },
+    {
+        "ParameterKey": "EnvironmentName",
+        "ParameterValue": "UdacityProject"
+    }
+]
